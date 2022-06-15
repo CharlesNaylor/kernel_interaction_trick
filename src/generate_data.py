@@ -2,6 +2,7 @@
 Generate fake data for testing
 We want a set of exogs with random parameters we will recover
 """
+import ast
 import json
 import logging
 from dataclasses import dataclass, asdict
@@ -51,12 +52,21 @@ class DataGenerator:
         """instantiate from saved json file"""
         with open(Path(json_path), "r") as json_file:
             params = json.load(json_file)
+        for x in ["single", "interaction"]:
+            params["true_params"][x] = {
+                ast.literal_eval(k): v for k, v in params["true_params"][x].items()
+            }
         return cls(**params)
 
     def to_json(self, json_path: Path):
         """save to json"""
+        params = asdict(self)
+        for x in ["single", "interaction"]:
+            params["true_params"][x] = {
+                str(k): v for k, v in params["true_params"][x].items()
+            }
         with open(Path(json_path), "w") as json_file:
-            json.dump(asdict(self), fp=json_file)
+            json.dump(params, fp=json_file)
             logger.info("Wrote data generator configuration to %s", Path(json_path))
 
     def generate_true_params(self):
@@ -80,12 +90,16 @@ class DataGenerator:
 
         # get interactions
         interaction_indexes = np.random.choice(
-            self.num_exogs, (self.num_interactions, self.num_interaction_levels)
+            self.num_exogs,
+            (self.num_interactions, self.num_interaction_levels),
+            replace=False,
         )
         interaction_effects = (
-            np.ceil(np.random.standard_normal(self.num_strong_effects) * 100) / 100
+            np.ceil(np.random.standard_normal(self.num_interactions) * 100) / 100
         )
-        true_params["interaction"] = dict(zip(interaction_indexes, interaction_effects))
+        true_params["interaction"] = dict(
+            zip(map(tuple, interaction_indexes), interaction_effects.tolist())
+        )
 
         return true_params
 
@@ -97,6 +111,7 @@ class DataGenerator:
         base_coefs = np.zeros(self.num_exogs)
         for index, coef in self.true_params["single"].items():
             base_coefs[index[0]] = coef
+
         for i, (index, coef) in enumerate(self.true_params["interaction"].items()):
             interacted_exogs[:, i] = exogs[:, index].prod(axis=1) * coef
         endo = exogs.dot(base_coefs) + interacted_exogs.sum(axis=1)

@@ -28,12 +28,7 @@ class TestDataGenerator(unittest.TestCase):
 
     def test_simulate(self):
         dg = DataGenerator(name="test")
-        expected_log = (
-            "Generated exogs and endo using data generator %s, version %s".format(
-                dg.name,
-                dg.version,
-            )
-        )
+        expected_log = f"Generated exogs and endo using data generator {dg.name}, version {dg.version}"
         with self.assertLogs("src.generate_data") as sim_logs:
             exogs, endos = dg.simulate()
         self.assertEqual(sim_logs.output, ["INFO:src.generate_data:" + expected_log])
