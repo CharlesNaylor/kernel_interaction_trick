@@ -5,6 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
+*.hpp
 
 # VIM
 *.sw[op]
@@ -75,3 +76,5 @@ venv.bak/
 
 # mkdocs documentation
 /site
+
+tags
