@@ -7,9 +7,11 @@ import logging
 from pathlib import Path
 
 import click
+from cmdstanpy import CmdStanModel
 
 from src.generate_data import DataGenerator
 
+logging.basicConfig(format="[%(asctime)s] %(levelname)s - %(message)s")
 logger = logging.getLogger()
 logger.addHandler(logging.StreamHandler())
 
@@ -46,7 +48,31 @@ def generate_data(
     )
     logger.info("Writing exog and endo to %s", output_path)
     with open(output_path, "w") as output_file:
-        json.dump(dict(X=exogs.tolist(), y=endo.tolist()), fp=output_file)
+        json.dump(
+            dict(
+                N=exogs.shape[0],
+                M=exogs.shape[1],
+                c=1,
+                m0=datagen.num_strong_effects,
+                X=exogs.tolist(),
+                y=endo.tolist(),
+            ),
+            fp=output_file,
+        )
+
+
+@cli.command()
+@click.option("--model-path", required=True, type=str, help="Path to stan model")
+@click.option("--data-path", required=True, type=str, help="Path to data")
+def fit(model_path, data_path):
+    """fit a model using cmdstanpy"""
+    model_path = Path(model_path)
+    data_path = Path(data_path)
+
+    model = CmdStanModel(stan_file=model_path)
+    logger.info("Fitting %s using %s", data_path.stem, model_path.stem)
+    fit = model.sample(data=str(data_path), show_console=True, chains=1)
+    logger.info(fit.summary())
 
 
 if __name__ == "__main__":
