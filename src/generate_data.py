@@ -22,6 +22,7 @@ class DataGenerator:
     :param num_strong_effects: how many exogs have significant coefficients?
     :param num_interaction_levels: to what degree should we have interactions?
     e.g. 2 = B_i*B_j, 3 = B_i*B_j*B_k
+    :param error_scale: if y ~ normal(B'X, sigma), this is sigma
     """
 
     name: str = ""
@@ -31,6 +32,7 @@ class DataGenerator:
     num_exogs: int = 10
     num_interaction_levels: int = 3
     num_interactions: int = None
+    error_scale: float = 1
     true_params: Dict[List[int], float] = None
 
     def __post_init__(self):
@@ -114,7 +116,11 @@ class DataGenerator:
 
         for i, (index, coef) in enumerate(self.true_params["interaction"].items()):
             interacted_exogs[:, i] = exogs[:, index].prod(axis=1) * coef
-        endo = exogs.dot(base_coefs) + interacted_exogs.sum(axis=1)
+        endo = (
+            exogs.dot(base_coefs)
+            + interacted_exogs.sum(axis=1)
+            + self.error_scale * np.random.standard_normal(size=self.num_obs)
+        )
         logger.info(
             "Generated exogs and endo using data generator %s, version %s",
             self.name,
