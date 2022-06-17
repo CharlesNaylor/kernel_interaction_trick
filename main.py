@@ -46,6 +46,7 @@ def generate_data(
             timestamp=f"{datetime.datetime.now():%Y%m%d%H%M}",
         )
     )
+    output_path.mkdir(parents=True, exist_ok=True)
     logger.info("Writing exog and endo to %s", output_path)
     with open(output_path, "w") as output_file:
         json.dump(
@@ -64,14 +65,22 @@ def generate_data(
 @cli.command()
 @click.option("--model-path", required=True, type=str, help="Path to stan model")
 @click.option("--data-path", required=True, type=str, help="Path to data")
-def fit(model_path, data_path):
+@click.option(
+    "--sample-path", default="output", type=str, help="Path to output HMC samples"
+)
+def fit(model_path, data_path, sample_path):
     """fit a model using cmdstanpy"""
     model_path = Path(model_path)
     data_path = Path(data_path)
+    timestamp = f"{datetime.datetime.now():%Y%m%d%H%M}"
+    output_path = Path(sample_path) / f"{model_path.stem}-{data_path.stem}-{timestamp}"
+    output_path.mkdir(parents=True, exist_ok=True)
 
     model = CmdStanModel(stan_file=model_path)
     logger.info("Fitting %s using %s", data_path.stem, model_path.stem)
-    fit = model.sample(data=str(data_path), show_console=True, chains=1)
+    fit = model.sample(
+        data=str(data_path), show_console=True, chains=4, output_dir=output_path
+    )
     logger.info(fit.summary())
 
 
