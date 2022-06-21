@@ -4,7 +4,7 @@
     "num_obs": 1000,
     "num_strong_effects": 5,
     "num_exogs": 10,
-    "num_interaction_levels": 3,
+    "num_interaction_levels": 2,
     "num_interactions": 2,
     "true_params": {
         "single": {
@@ -14,7 +14,7 @@
             "(3,)": -0.24,
             "(2,)": -6.44},
         "interaction": {
-            "(0, 8, 4)": 0.55,
-            "(2, 6, 5)": 0.49}
+            "(1, 8)": 0.55,
+            "(2, 6)": 0.49}
     }
 }

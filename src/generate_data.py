@@ -11,6 +11,8 @@ from typing import Dict, List
 
 import numpy as np
 
+from src.encoder import NumpyEncoder
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,10 +62,11 @@ class DataGenerator:
         """instantiate from saved json file"""
         with open(Path(json_path), "r") as json_file:
             params = json.load(json_file)
-        for x in ["single", "interaction"]:
-            params["true_params"][x] = {
-                ast.literal_eval(k): v for k, v in params["true_params"][x].items()
-            }
+        if params.get("true_params", False):
+            for x in ["single", "interaction"]:
+                params["true_params"][x] = {
+                    ast.literal_eval(k): v for k, v in params["true_params"][x].items()
+                }
         return cls(**params)
 
     def to_json(self, json_path: Path):
@@ -74,7 +77,7 @@ class DataGenerator:
                 str(k): v for k, v in params["true_params"][x].items()
             }
         with open(Path(json_path), "w") as json_file:
-            json.dump(params, fp=json_file)
+            json.dump(params, fp=json_file, cls=NumpyEncoder)
             logger.info("Wrote data generator configuration to %s", Path(json_path))
 
     def generate_true_params(self):
@@ -89,10 +92,9 @@ class DataGenerator:
             self.num_exogs, self.num_strong_effects, replace=False
         )
         # get interactions
+        # note assumption that interactions only happen on strong effects
         interactions = np.random.choice(
-            indexes.shape[
-                0
-            ],  # note assumption that interactions only happen on strong effects
+            indexes.shape[0],
             (self.num_interactions, self.num_interaction_levels),
             replace=False,
         )
@@ -100,7 +102,7 @@ class DataGenerator:
         interaction_indexes = np.vectorize(lambda x: indexes[x])(interactions)
 
         interaction_effects = (
-            np.ceil(np.random.standard_normal(self.num_interactions) * 100) / 100
+            np.ceil(np.random.standard_normal(self.num_interactions) * 1000) / 100
         )
 
         # put indexes in as a list b/c the rest will be interactions

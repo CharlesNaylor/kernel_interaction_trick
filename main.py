@@ -10,6 +10,7 @@ import click
 from cmdstanpy import CmdStanModel
 
 from src.generate_data import DataGenerator
+from src.encoder import NumpyEncoder
 
 logging.basicConfig(format="[%(asctime)s] %(levelname)s - %(message)s")
 logger = logging.getLogger()
@@ -37,6 +38,7 @@ def generate_data(
 ):
     """generates data for use in the SKIM experiments"""
     datagen = DataGenerator.from_json(Path(config_path))
+    datagen.to_json(Path(config_path))  # round-trip in case we regenerated true params
     exogs, endo = datagen.simulate()
 
     output_path = Path(
@@ -48,6 +50,12 @@ def generate_data(
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     logger.info("Writing exog and endo to %s", output_path)
+
+    # reindex interaction info to be 1-indexed
+    interaction_indexes = [
+        [x + 1 for x in row] for row in datagen.true_params["interaction"].keys()
+    ]
+
     with open(output_path, "w") as output_file:
         json.dump(
             dict(
@@ -57,8 +65,12 @@ def generate_data(
                 m0=datagen.num_strong_effects,
                 X=exogs.tolist(),
                 y=endo.tolist(),
+                I=datagen.num_interactions,
+                interaction_levels=datagen.num_interaction_levels,
+                interaction_indexes=interaction_indexes,
             ),
             fp=output_file,
+            cls=NumpyEncoder,
         )
 
 
@@ -79,7 +91,12 @@ def fit(model_path, data_path, sample_path):
     model = CmdStanModel(stan_file=model_path)
     logger.info("Fitting %s using %s", data_path.stem, model_path.stem)
     fit = model.sample(
-        data=str(data_path), show_console=True, chains=4, output_dir=output_path
+        data=str(data_path),
+        show_console=True,
+        output_dir=output_path,
+        chains=4,
+        iter_warmup=1000,
+        iter_sampling=1000,
     )
     logger.info(fit.summary())
 
