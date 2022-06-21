@@ -46,7 +46,7 @@ def generate_data(
             timestamp=f"{datetime.datetime.now():%Y%m%d%H%M}",
         )
     )
-    output_path.mkdir(parents=True, exist_ok=True)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     logger.info("Writing exog and endo to %s", output_path)
     with open(output_path, "w") as output_file:
         json.dump(
