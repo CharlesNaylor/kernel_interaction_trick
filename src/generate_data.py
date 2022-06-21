@@ -30,21 +30,27 @@ class DataGenerator:
     num_obs: int = 1000
     num_strong_effects: int = None
     num_exogs: int = 10
-    num_interaction_levels: int = 3
+    num_interaction_levels: int = 2
     num_interactions: int = None
     error_scale: float = 1
     true_params: Dict[List[int], float] = None
 
     def __post_init__(self):
         if self.num_strong_effects is None:
-            self.num_strong_effects = self.num_exogs // 2
+            self.num_strong_effects = self.num_exogs // self.num_interaction_levels
         assert self.num_strong_effects <= self.num_exogs
         assert self.num_strong_effects > 0
 
         if self.num_interactions is None:
             self.num_interactions = (
-                self.num_strong_effects - self.num_interaction_levels
+                self.num_strong_effects // self.num_interaction_levels
             )
+
+        # must have enough strong effects to also have interactions
+        # interactions are restricted by skim algo to exist on strong effects
+        assert (
+            self.num_interactions * self.num_interaction_levels
+        ) <= self.num_strong_effects
 
         if self.true_params is None:
             self.true_params = self.generate_true_params()
@@ -79,26 +85,29 @@ class DataGenerator:
             np.ceil(np.random.standard_normal(self.num_strong_effects) * 1000) / 100
         )  # effective sigma of 10
 
-        # put indexes in as a list b/c the rest will be interactions
-        indexes = [
-            (i,)
-            for i in np.random.choice(
-                self.num_exogs, self.num_strong_effects, replace=False
-            )
-        ]
-        true_params = {
-            "single": dict(zip(indexes, strong_effects)),
-        }
-
+        indexes = np.random.choice(
+            self.num_exogs, self.num_strong_effects, replace=False
+        )
         # get interactions
-        interaction_indexes = np.random.choice(
-            self.num_exogs,
+        interactions = np.random.choice(
+            indexes.shape[
+                0
+            ],  # note assumption that interactions only happen on strong effects
             (self.num_interactions, self.num_interaction_levels),
             replace=False,
         )
+        # switch to true exog indexes
+        interaction_indexes = np.vectorize(lambda x: indexes[x])(interactions)
+
         interaction_effects = (
             np.ceil(np.random.standard_normal(self.num_interactions) * 100) / 100
         )
+
+        # put indexes in as a list b/c the rest will be interactions
+        true_params = {
+            "single": dict(zip([(i,) for i in indexes], strong_effects)),
+        }
+
         true_params["interaction"] = dict(
             zip(map(tuple, interaction_indexes), interaction_effects.tolist())
         )
